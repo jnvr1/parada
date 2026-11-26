@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f4fbff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.png">
+<title>Parada</title>
+<style>
+/* --u es la unidad de la interfaz (fija); --c es la celda del tablero (se achica cuando el tablero crece);
+   --h es la altura de los bloques: el "3D" es una cara frontal hecha con sombra sólida.
+   Todo el aspecto sale de variables: acá están los valores por defecto y cada mundo (body.tN) define su material. */
+body {
+  --n: 6; --u: calc(min(90vw, 43vh) / 6); --c: calc(min(90vw, 43vh) / var(--n)); --h: calc(var(--c) * .16);
+  --font: ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+  --panel-r: 14px; --stitch: none;            /* paneles: cartel, botones, fila, parada, tarjeta */
+  --rim-r: 22px; --rim-stitch: none;          /* borde del tablero */
+  --er: 1.3px; /* --er: radio de los ojos */
+}
+/* Un mundo cada 15 niveles. Son guiños originales a cosas que le gustan a la jugadora, no copias de los personajes. */
+body.t0 { /* Nubecitas — una cafetería en el cielo: toldos a rayas pastel y cielo con nubes. Perritos blancos sobre rollitos de canela glaseados */
+  --bg1: #fff6fb; --bg2: #bfe3ff; --ink: #5a5fa0;
+  --panel: repeating-linear-gradient(90deg, #fff 0 16px, #ffd9e8 16px 32px); --panel-d: #f0a9c4; --panel-r: 26px; /* toldo */
+  --mat: #bfe3ff; --mat-img:
+    radial-gradient(ellipse 34% 14% at 30% 32%, #fff 97%, #0000) 0 0 / calc(var(--c) * 3) calc(var(--c) * 3),
+    radial-gradient(ellipse 22% 12% at 46% 24%, #fff 97%, #0000) 0 0 / calc(var(--c) * 3) calc(var(--c) * 3),
+    radial-gradient(ellipse 30% 12% at 76% 74%, #fffc 97%, #0000) 0 0 / calc(var(--c) * 3) calc(var(--c) * 3); /* nubes */
+  --rim: #fff; --rim-d: #f0a9c4; --rim-r: 36px; --rim-stitch: 2px dotted #ffb7d2;
+  --skin: #fff; --eye: #5aa7e0; --cheek: #ffb3cf;
+}
+body.t1 { /* Anochecer — tapa de novela: negro, rojo manzana y blanco; claro de bosque con niebla. Vampiros pálidos en ataúdes forrados de rojo */
+  --font: Georgia, "Times New Roman", serif;
+  --bg1: #3b2f55; --bg2: #0b0a12; --ink: #fff;
+  --panel: linear-gradient(#26222e, #0e0c13); --panel-d: #000; --panel-r: 4px; --stitch: 1px solid #c8102e; /* filete rojo */
+  --mat: #1f3a30; --mat-img:
+    repeating-linear-gradient(180deg, #0000 0 calc(var(--c) * .7), #ffffff14 calc(var(--c) * .7) var(--c)),
+    repeating-linear-gradient(60deg, #0000 0 9px, #0000001f 9px 10px); /* niebla sobre el bosque */
+  --rim: #15131a; --rim-d: #000; --rim-r: 6px; --rim-stitch: 2px solid #c8102e;
+  --skin: #f6eff2; --eye: #d9a520; --hair: #2b1d1d;
+}
+body.t2 { /* La arena — acero remachado y fuego. Tributos con trenza sobre cajas de suministros */
+  --font: Impact, "Arial Narrow", "Roboto Condensed", sans-serif;
+  --bg1: #ffe2b0; --bg2: #e08a3c; --ink: #fff5e0;
+  --panel: radial-gradient(circle at 9px 9px, #0006 2px, #0000 3px), radial-gradient(circle at calc(100% - 9px) 9px, #0006 2px, #0000 3px),
+    radial-gradient(circle at 9px calc(100% - 9px), #0006 2px, #0000 3px), radial-gradient(circle at calc(100% - 9px) calc(100% - 9px), #0006 2px, #0000 3px),
+    linear-gradient(#6a6d75, #4b4e56); /* remaches en las esquinas */
+  --panel-d: #2c2e33; --panel-r: 4px;
+  --mat: #e6cf9c; --mat-img: radial-gradient(#0000001f 2px, #0000 3px) 0 0 / 9px 9px; /* arena granulada */
+  --rim: #4b4e56; --rim-d: #2c2e33; --rim-r: 6px; --rim-stitch: 2px solid #f2a33a; /* línea de fuego */
+  --skin: #e9b98a; --eye: #3a2414; --hair: #3a2414;
+}
+body.t3 { /* Arrecife — arena de playa y agua con olas. Tiburoncitos sobre tablas de surf */
+  --bg1: #bdeeff; --bg2: #2f8fc4; --ink: #0d3550;
+  --panel: radial-gradient(#00000014 1.5px, #0000 2.5px) 0 0 / 11px 11px, linear-gradient(#f7e7bd, #ecd49c); --panel-d: #c4a973; --panel-r: 20px;
+  --mat: #7fcde4; --mat-img: repeating-linear-gradient(0deg, #0000 0 calc(var(--c) * .5 - 2px), #ffffff55 calc(var(--c) * .5 - 2px) calc(var(--c) * .5)), linear-gradient(#bfeaf5, #62bfdd); /* olas */
+  --rim: #f2deb0; --rim-d: #c4a973; --rim-r: 32px;
+  --skin: #8fa9bf; --face: linear-gradient(#8fa9bf 62%, #f4f8fb 62%); --eye: #10202c;
+}
+body.t4 { /* El otro lado — tela cosida. Muñecos con ojos de botón sobre carretes de hilo */
+  --font: Georgia, "Times New Roman", serif; font-style: italic;
+  --bg1: #3a2f66; --bg2: #120f26; --ink: #ffe9f6;
+  --panel: repeating-linear-gradient(45deg, #0000 0 3px, #ffffff0d 3px 4px), repeating-linear-gradient(-45deg, #0000 0 3px, #ffffff0d 3px 4px), #4b3f7a; /* trama */
+  --panel-d: #2e2552; --panel-r: 10px; --stitch: 2px dashed #ffb3dccc; /* costura */
+  --mat: #2a2a4a; --mat-img: conic-gradient(#ffffff0f 25%, #0000 0 50%, #ffffff0f 0 75%, #0000 0) 0 0 / calc(var(--c) * 2) calc(var(--c) * 2); /* colcha a cuadros */
+  --rim: #c0508f; --rim-d: #8a3566; --rim-r: 14px; --rim-stitch: 2px dashed #ffd1ea;
+  --skin: #f3dcc6; --eye: #111; --er: 2.2px; --hair: #27306b;
+}
+body.t5 { /* Pasarela — brillantina y animal print. Muñecas glam de melena enorme sobre labiales */
+  --font: "Arial Black", Impact, "Arial Narrow", sans-serif;
+  --bg1: #ffd6ec; --bg2: #b44ad1; --ink: #fff;
+  --panel: radial-gradient(#fff9 1px, #0000 1.6px) 0 0 / 13px 13px, radial-gradient(#fff6 1px, #0000 1.6px) 6px 7px / 17px 17px, linear-gradient(#ff5fb0, #e0338f); /* brillantina */
+  --panel-d: #a31d63; --panel-r: 18px; --stitch: 2px solid #ffd76a; /* ribete dorado */
+  --mat: #ffc2e2; --mat-img: repeating-linear-gradient(115deg, #0000 0 14px, #7a2a8a2e 14px 20px, #0000 20px 31px, #7a2a8a1f 31px 34px); /* cebra */
+  --rim: #8a3fc7; --rim-d: #5a2389; --rim-r: 26px; --rim-stitch: 2px solid #ffd76a;
+  --skin: #d9a877; --eye: #3a2a55; --er: 1.8px; --lip: #e0346f; --hair: #3b1f14;
+}
+body.t6 { /* Clase de monstruos — negro, rosa neón y rombos. Monstruitas de piel verde y mechón rosa sobre lápices */
+  --font: Georgia, "Times New Roman", serif;
+  --bg1: #3d2a4f; --bg2: #0d0b12; --ink: #ffd9ee;
+  --panel: repeating-linear-gradient(45deg, #0000 0 11px, #ff4fa32e 11px 13px), repeating-linear-gradient(-45deg, #0000 0 11px, #46e0d02e 11px 13px), #1a161f; /* rombos */
+  --panel-d: #000; --panel-r: 8px; --stitch: 2px dashed #ff4fa3;
+  --mat: #221d2b; --mat-img: conic-gradient(#46e0d01f 25%, #0000 0 50%, #ff4fa31f 0 75%, #0000 0) 0 0 / calc(var(--c) * 2) calc(var(--c) * 2); /* damero */
+  --rim: #ff4fa3; --rim-d: #a8256a; --rim-r: 10px; --rim-stitch: 2px dashed #15121a;
+  --skin: #b6e3c6; --eye: #ff4fa3; --er: 1.8px; --hair: #7b3fb5;
+}
+body.t7 { /* La manada — franela a cuadros y nieve. Lobitos sobre huesos */
+  --bg1: #eaf4fb; --bg2: #7fa3bf; --ink: #fff;
+  --panel: repeating-linear-gradient(0deg, #0000 0 10px, #0005 10px 20px), repeating-linear-gradient(90deg, #b3202a 0 10px, #6e1219 10px 20px); /* franela */
+  --panel-d: #4a0c11; --panel-r: 8px;
+  --mat: #eef6fb; --mat-img: radial-gradient(#b9cfe0 1.5px, #0000 2.5px) 0 0 / 14px 14px; /* nieve */
+  --rim: #2f4f3e; --rim-d: #1c3327; --rim-r: 12px;
+  --skin: #9aa3ad; --face: radial-gradient(circle at 50% 88%, #e8ecef 0 30%, #9aa3ad 32%); --eye: #e0a21a; --ear: #7d8690;
+}
+body.t8 { /* Mansión de medianoche — rayas, mármol a cuadros y un filete violeta. Esqueletos de galera sobre llaves antiguas */
+  --font: Georgia, "Times New Roman", serif;
+  --bg1: #4a4a57; --bg2: #0c0c10; --ink: #fff;
+  --panel: repeating-linear-gradient(90deg, #17171c 0 12px, #2a2a33 12px 24px); --panel-d: #000; --panel-r: 2px; --stitch: 1px solid #f2f0ea; /* rayas */
+  --mat: #2a2a33; --mat-img: conic-gradient(#e9e6df 25%, #0000 0 50%, #e9e6df 0 75%, #0000 0) 0 0 / calc(var(--c) * 2) calc(var(--c) * 2); /* damero de mármol */
+  --rim: #111; --rim-d: #000; --rim-r: 4px; --rim-stitch: 2px solid #b08cff;
+  --skin: #f4f1ea; --eye: #111; --er: 2.4px; --lip: #111;
+}
+body.t9 { /* Dulcería kawaii — menta con lunares y vainilla con granas. Gatitas sobre caramelos envueltos */
+  --bg1: #fffbe8; --bg2: #ffc9de; --ink: #a04a78;
+  --panel: radial-gradient(#fff 2.5px, #0000 3.5px) 0 0 / 16px 16px, #b8f0dc; --panel-d: #7cc9ae; --panel-r: 22px; /* lunares */
+  --mat: #fff3c9; --mat-img: radial-gradient(#ff8fb8 1.5px, #0000 2.5px) 0 0 / 22px 22px, radial-gradient(#7fd3ff 1.5px, #0000 2.5px) 11px 7px / 26px 26px, radial-gradient(#9be28f 1.5px, #0000 2.5px) 5px 15px / 30px 30px; /* granas */
+  --rim: #ff9ec4; --rim-d: #d96a98; --rim-r: 30px; --rim-stitch: 3px dotted #fff;
+  --skin: #fff; --eye: #222; --cheek: #ffb3cf; --lip: #f7c531; --ear: #fff;
+}
+body.t10 { /* Sirenas — nácar tornasolado, perlas y escamas. Sirenitas en conchas gigantes */
+  --bg1: #d8fff6; --bg2: #7a6fd6; --ink: #3b2f7a;
+  --panel: linear-gradient(120deg, #c9f5ff, #e6d4ff 50%, #ffd6ef); --panel-d: #9d8fd6; --panel-r: 24px; --stitch: 2px dotted #fff; /* nácar con perlas */
+  --mat: #5fd0c8; --mat-img: radial-gradient(circle at 50% 0, #0000 0 60%, #ffffff40 62% 70%, #0000 72%) 0 0 / calc(var(--c) * .5) calc(var(--c) * .5); /* escamas */
+  --rim: #e6d4ff; --rim-d: #9d8fd6; --rim-r: 34px; --rim-stitch: 3px dotted #fff;
+  --skin: #f2c9a8; --eye: #3b2f7a; --lip: #ff6fa8; --hair: #19b5a5;
+}
+body.t11 { /* El Capitolio — oro, mármol y exceso. Pelucas empolvadas sobre ramos de rosas blancas */
+  --font: "Bodoni MT", Didot, Georgia, serif;
+  --bg1: #fdf3d0; --bg2: #c9358f; --ink: #3a2a00;
+  --panel: linear-gradient(120deg, #f7d774, #fff3b8 45%, #d9a520); --panel-d: #9a7310; --panel-r: 2px; --stitch: 3px double #7a5a00; /* oro con moldura */
+  --mat: #f6f3ee; --mat-img: repeating-linear-gradient(125deg, #0000 0 22px, #0000000f 22px 23px, #0000 23px 41px, #00000014 41px 42px); /* vetas de mármol */
+  --rim: #d9a520; --rim-d: #9a7310; --rim-r: 4px; --rim-stitch: 3px double #fff3b8;
+  --skin: #f2d3bd; --eye: #1188aa; --lip: #c9358f; --cheek: #ff9ec4;
+}
+body.t12 { /* Acuario de medusas — vidrio oscuro y neón. Medusas con halo dentro de burbujas */
+  --bg1: #1b2a6b; --bg2: #050818; --ink: #c9f6ff;
+  --panel: linear-gradient(#ffffff26, #ffffff0d), #0f1d4a; --panel-d: #050a22; --panel-r: 16px; --stitch: 1px solid #5ff0ff88; /* vidrio con borde neón */
+  --mat: #0b1440; --mat-img: radial-gradient(circle, #0000 0 5px, #5ff0ff40 5px 6px, #0000 7px) 0 0 / var(--c) var(--c),
+    radial-gradient(circle, #0000 0 3px, #ff7ae040 3px 4px, #0000 5px) calc(var(--c) * .5) calc(var(--c) * .4) / calc(var(--c) * 1.5) calc(var(--c) * 1.5); /* burbujas */
+  --rim: #162a7a; --rim-d: #0a1445; --rim-r: 26px; --rim-stitch: 2px solid #5ff0ff;
+  --skin: #e6d9ff; --face: linear-gradient(#f3ecff, #cdb8ff); --eye: #3b2f7a;
+}
+/* Rasgos de los personajes de los mundos 8 a 13 */
+.t7 .p::after, .t9 .p::after { left: 8%; width: 84%; height: 34%; bottom: 150%; background: var(--ear); clip-path: polygon(0 100%, 12% 0, 38% 100%, 62% 100%, 88% 0, 100% 100%); } /* orejas en punta */
+.t8 .p::after { left: 4%; width: 92%; height: 40%; bottom: 155%; background: #111; clip-path: polygon(22% 0, 78% 0, 78% 78%, 100% 78%, 100% 100%, 0 100%, 0 78%, 22% 78%); } /* galera */
+.t10 .p::after { z-index: -1; left: -4%; width: 108%; height: 105%; bottom: 80%; border-radius: 50% 50% 30% 30%; background: var(--hair); } /* pelo largo */
+.t11 .p::after { z-index: -1; left: 0; width: 100%; height: 70%; bottom: 135%; border-radius: 50% 50% 40% 40%; background: #fdfdfd; box-shadow: inset -3px -3px 0 #0001; } /* peluca alta */
+.t12 .p::before { border-radius: 50% 50% 30% 30% / 70% 70% 30% 30%; } /* campana */
+.t12 .p::after { z-index: -1; left: -8%; width: 116%; aspect-ratio: 1; bottom: 76%; border-radius: 50%; background: #5ff0ff55; } /* halo */
+.boss #board { border-color: #f2c14e; box-shadow: 0 10px 0 #b98a1d, 0 0 34px #f2c14eaa, inset 0 4px 6px #0003; } /* nivel desafío */
+
+/* Decorado: emojis del mundo flotando en el fondo (posiciones distintas en cada nivel) y su emblema como marca de agua del tablero */
+#deco { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+#deco div { position: absolute; opacity: .6; font-style: normal; animation: float 5s ease-in-out infinite alternate; }
+#board::before { content: var(--mark); position: absolute; inset: 0; display: grid; place-items: center; font-size: calc(var(--c) * var(--n) * .55); font-style: normal; opacity: .16; pointer-events: none; }
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; gap: 2vh;
+  padding: max(2vh, env(safe-area-inset-top)) 0 4vh;
+  background: radial-gradient(circle at 50% 0, var(--bg1), var(--bg2)) fixed; color: var(--ink);
+  font-weight: 700; font-size: 16px; font-family: var(--font);
+  user-select: none; -webkit-user-select: none; touch-action: manipulation;
+}
+header, #queue, #dock { width: calc(var(--u) * 6 + 16px); }
+header { display: flex; justify-content: space-between; align-items: center; }
+
+/* Paneles: cartel de nivel, botones, fila, parada y tarjeta; el material lo pone el mundo */
+#lvl, button, #queue, #dock, #card {
+  background: var(--panel); border-radius: var(--panel-r); outline: var(--stitch); outline-offset: -5px;
+  box-shadow: 0 5px 0 var(--panel-d), 0 9px 10px #0003, inset 0 2px 0 #fff4;
+}
+#lvl { padding: .4em 1em; }
+button { font: inherit; color: var(--ink); border: 0; padding: .45em .9em; }
+button:active { translate: 0 3px; box-shadow: 0 2px 0 var(--panel-d), inset 0 2px 0 #fff4; }
+
+/* Fila de pasajeros: el del frente (izquierda) es el que sube */
+#queue { height: calc(var(--u) * 1.3); padding: 0 12px 7px; display: flex; align-items: flex-end; gap: 6px; overflow: hidden; font-size: .8em; }
+.p {
+  flex: none; position: relative; isolation: isolate; width: calc(var(--u) * .4); height: calc(var(--u) * .4); border-radius: 40% 40% 22% 22%;
+  background: linear-gradient(90deg, #fff4, #0000 45%, #0003), var(--k); box-shadow: 0 2px 0 #0003;
+  display: grid; place-items: center; font-size: calc(var(--u) * .18); font-style: normal; color: #fff;
+}
+.p::before { /* cabeza con ojos */
+  content: ''; position: absolute; bottom: 85%; left: 10%; width: 80%; aspect-ratio: 1; border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 60%, var(--eye) 0 var(--er), #0000 calc(var(--er) + .6px)),
+    radial-gradient(circle at 68% 60%, var(--eye) 0 var(--er), #0000 calc(var(--er) + .6px)),
+    radial-gradient(circle at 16% 78%, var(--cheek, #0000) 0 1.6px, #0000 2.3px),
+    radial-gradient(circle at 84% 78%, var(--cheek, #0000) 0 1.6px, #0000 2.3px),
+    radial-gradient(ellipse 22% 11% at 50% 85%, var(--lip, #0000) 96%, #0000), /* labios, solo si el mundo define --lip */
+    var(--face, var(--skin));
+  box-shadow: inset -2px -2px 0 #0002;
+}
+.p::after { content: ''; position: absolute; } /* el rasgo de cada mundo */
+.t0 .p::after { z-index: -1; left: -12%; width: 124%; height: 42%; bottom: 100%; border-radius: 40% 40% 50% 50%; background: #fff; box-shadow: inset 0 -2px 0 #0001; } /* orejas caídas */
+.t5 .p::before { left: 2%; width: 96%; } /* cabezota */
+.t5 .p::after { z-index: -1; left: -10%; width: 120%; height: 115%; bottom: 80%; border-radius: 50% 50% 35% 35%; background: var(--hair); } /* melena enorme por detrás */
+.t6 .p::after { background: linear-gradient(90deg, #7b3fb5 55%, #ff4fa3 55% 75%, #7b3fb5 75%) !important; } /* mechón rosa */
+.t1 .p::after, .t2 .p::after, .t6 .p::after { left: 8%; width: 84%; height: 44%; bottom: 122%; border-radius: 50% 50% 12% 12% / 90% 90% 10% 10%; background: var(--hair); } /* pelo */
+.t2 .p::after { box-shadow: calc(var(--u) * .13) calc(var(--u) * .14) 0 calc(var(--u) * -.045) var(--hair); } /* trenza al costado */
+.t3 .p::after { left: 38%; width: 36%; height: 34%; bottom: 158%; background: #7d98af; clip-path: polygon(20% 0, 100% 100%, 0 100%); } /* aleta */
+.t4 .p::after { left: 4%; width: 92%; height: 68%; bottom: 100%; border: solid var(--hair); border-width: calc(var(--u) * .1) calc(var(--u) * .045) 0; border-radius: 50% 50% 20% 20%; } /* melena */
+#queue.adv .p { animation: shift .18s ease-out; }
+#queue .p:first-child { scale: 1.25; margin: 0 7px 3px 4px; animation: hop .5s infinite alternate ease-in-out; }
+.more { margin-left: auto; align-self: center; opacity: .7; }
+.fly { position: fixed; z-index: 60; transform-origin: 0 0; pointer-events: none; } /* pasajero yendo a su asiento */
+
+/* Parada: huecos; cada vehículo muestra sus asientos y las cabecitas que ya subieron */
+#dock, .ghost { --h: calc(var(--u) * .16); }
+#dock { display: grid; grid-template-columns: repeat(var(--docks, 4), 1fr); gap: 8px; padding: 8px 8px calc(8px + var(--h) * .6); }
+.slot { height: calc(var(--u) * 1.3); border-radius: 12px; background: #0000001f; box-shadow: inset 0 3px 5px #0004, inset 0 -1px 0 #fff3; }
+.slot.full {
+  position: relative; isolation: isolate; background: none; box-shadow: none;
+  filter: drop-shadow(0 var(--h) 0 var(--kd)); translate: 0 calc(var(--h) * -.6);
+  display: grid; grid-template-columns: repeat(var(--cols), auto); place-content: center; gap: 4px;
+}
+.slot.full .art { inset: 0; width: auto; height: auto; transform: none; z-index: -1; } /* el mismo objeto, de fondo */
+.slot.arrive { animation: land .01s var(--wait) backwards; } /* --wait lo pone el JS: aparece justo cuando aterriza la pieza */
+.slot.arrive .seat { animation: pop .25s calc(var(--wait) + 30ms) backwards; }
+.travel { position: fixed; z-index: 40; pointer-events: none; filter: drop-shadow(0 var(--h) 0 var(--kd)) drop-shadow(0 8px 8px #0005); } /* pieza en viaje del tablero a la parada */
+.spin { position: absolute; inset: 0; } /* gira la pieza hasta acostarla; la sombra queda en .travel para que siempre caiga hacia abajo */
+.ping { position: fixed; z-index: 49; width: 10px; height: 10px; margin: -5px; border-radius: 50%; border: 3px solid var(--k); pointer-events: none; animation: ping .5s ease-out forwards; }
+.ghost { position: fixed; z-index: 50; margin: 0; translate: none !important; pointer-events: none; transition: transform .5s .25s cubic-bezier(.6, -.3, .9, .6); } /* vehículo lleno que se va */
+.seat {
+  width: calc(var(--u) * .21); aspect-ratio: 1; border-radius: 50%; background: var(--kd); box-shadow: inset 0 2px 2px #0005;
+  color: #fff9; font-size: calc(var(--u) * .11); font-style: normal; line-height: 1; display: grid; place-items: center;
+}
+.seat.on { background: radial-gradient(circle at 35% 30%, #fff7, #0000 60%), var(--skin); box-shadow: 0 2px 0 #0004; color: #0000; }
+.seat.pop { animation: pop .2s .22s backwards; } /* espera a que llegue el pasajero */
+
+/* Estacionamiento: bandeja inclinada en perspectiva; superficie y borde los pone el mundo */
+#stage { perspective: 900px; }
+#board {
+  box-sizing: content-box; position: relative; width: calc(var(--c) * var(--n)); height: calc(var(--c) * var(--n));
+  background: var(--mat-img), var(--mat);
+  border: 8px solid var(--rim); border-radius: var(--rim-r); outline: var(--rim-stitch); outline-offset: -6px;
+  box-shadow: 0 10px 0 var(--rim-d), 0 20px 18px #0004, inset 0 4px 6px #0003;
+  overflow: hidden; transform: rotateX(18deg); transform-origin: 50% 100%;
+}
+/* Cada pieza es un dibujo SVG del objeto del mundo (ART en el JS), pintado con el color del pasajero (--k).
+   Se dibuja acostado mirando a la derecha y se gira con --rot. El "3D" es su silueta repetida hacia abajo (drop-shadow). */
+.v { position: absolute; transition: transform .45s cubic-bezier(.6, -.25, .9, .6); cursor: pointer; }
+.v.bump { animation: bump .22s; } /* bloqueado: amaga a salir y vuelve */
+.bus {
+  position: absolute; inset: 0; filter: drop-shadow(0 var(--h) 0 var(--kd)) drop-shadow(0 3px 3px #0006); transition: translate .08s;
+  animation: drop .4s calc(var(--i) * 35ms) cubic-bezier(.3, 1.4, .6, 1) backwards; /* caen de a uno al empezar */
+}
+.art { position: absolute; left: 50%; top: calc(50% - var(--h) / 2); width: var(--len); height: var(--thick); transform: translate(-50%, -50%) rotate(var(--rot)); }
+.art svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.art .k { fill: var(--k); stroke: var(--kd); stroke-width: 3; stroke-linejoin: round; } /* cuerpo, del color del pasajero */
+.art .d { fill: var(--kd); }
+.art .o { fill: var(--kd); stroke: var(--kd); stroke-width: 6; stroke-linejoin: round; }
+.art .f { fill: var(--k); }
+.art .w { fill: #fff; }
+.art .wl { fill: none; stroke: #fff; stroke-width: 5; stroke-linecap: round; opacity: .85; } /* trazo claro */
+.art .dl { fill: none; stroke: var(--kd); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; } /* trazo oscuro */
+.v:active .bus { translate: 0 3px; }
+.roof { position: absolute; inset: 0 0 var(--h); display: grid; place-items: center; pointer-events: none; }
+.tag { display: flex; align-items: center; gap: calc(var(--c) * .05); padding: .12em .3em; border-radius: 999px; background: #00000059; color: #fff; font: 700 calc(var(--c) * .3)/1 system-ui, sans-serif; } /* flecha + símbolo */
+
+/* Obstáculos que se abren jugando (ver tiles en logic.js) */
+.tile { position: absolute; isolation: isolate; width: var(--c); height: var(--c); padding-bottom: var(--h); display: grid; place-items: center; pointer-events: none; color: #fff; font: 700 calc(var(--c) * .42)/1 system-ui, sans-serif; text-shadow: 0 2px 0 #0006; }
+.tile::before { content: ''; position: absolute; z-index: -1; inset: 3px 3px calc(var(--h) + 3px); }
+/* Puente levadizo: dibujo SVG (BRIDGE en el JS) con las dos hojas levantadas y un medallón del color que lo baja */
+.tile.gate::before { display: none; }
+.tile.gate { padding: 0; font-size: calc(var(--c) * .26); }
+.br { position: absolute; inset: 0; z-index: -1; filter: drop-shadow(0 calc(var(--h) * .6) 0 var(--rim-d)) drop-shadow(0 3px 3px #0006); } /* la sombra va acá para que no gire con el puente */
+.br svg { display: block; width: 100%; height: 100%; overflow: visible; rotate: var(--rot); }
+.leaf { transform-box: fill-box; transition: transform .35s ease-in; }
+.leaf.l { transform-origin: left center; }
+.leaf.r { transform-origin: right center; }
+.gone .leaf { transform: scaleX(1.27); } /* las hojas bajan y se juntan en el medio */
+.med, .tile.gate .lbl { transition: opacity .15s; }
+.gone .med, .tile.gate.gone .lbl { opacity: 0; }
+.tile.gate.gone { animation: fade .3s .6s forwards; }
+.tile.count::before { border-radius: 50%; background: #2b2b33; box-shadow: 0 var(--h) 0 #111, 0 calc(var(--h) + 3px) 4px #0006, inset 0 0 0 3px var(--rim); } /* bloque con número: redondo y oscuro */
+.tile.tick { animation: pop .25s; }
+.tile.gone { animation: gone .4s forwards; }
+/* Pieza sorpresa: gris y con signo de pregunta hasta que queda libre */
+.mystery .bus { filter: grayscale(1) brightness(1.1) drop-shadow(0 var(--h) 0 #777) drop-shadow(0 3px 3px #0006); }
+.reveal .bus { animation: pop .3s; }
+#tip { min-height: 1.3em; max-width: 90vw; text-align: center; font-size: .9em; }
+.shake { animation: shake .25s; }
+@keyframes shake { 25% { translate: -5px } 75% { translate: 5px } }
+@keyframes bump { 40% { translate: calc(var(--dx) * 7px) calc(var(--dy) * 7px) } }
+@keyframes float { to { translate: 0 14px } }
+@keyframes hop { to { translate: 0 -3px } }
+@keyframes pop { from { scale: 0 } 70% { scale: 1.12 } }
+@keyframes gone { to { scale: 1.5; opacity: 0 } }
+@keyframes fade { to { opacity: 0 } }
+@keyframes land { from { opacity: 0 } }
+@keyframes ping { to { scale: 9; opacity: 0 } }
+@keyframes shift { from { translate: calc(var(--u) * .4 + 6px) 0 } }
+@keyframes banner { 0% { opacity: 0; scale: 1.15 } 15%, 75% { opacity: 1; scale: 1 } 100% { opacity: 0 } }
+@keyframes drop { from { translate: 0 calc(var(--c) * -.6); opacity: 0 } }
+@keyframes rise { from { scale: .7; opacity: 0 } }
+@keyframes fall { to { translate: 0 110vh; rotate: 540deg } }
+
+#banner { position: fixed; inset: 0; z-index: 90; display: grid; place-content: center; text-align: center; white-space: pre-line; font-size: 2em; line-height: 1.4; color: #fff; text-shadow: 0 3px 0 #0008; background: #000a; opacity: 0; pointer-events: none; }
+#banner.show { animation: banner 1.8s ease-in-out; }
+#msg { position: fixed; inset: 0; z-index: 99; background: #1a122699; display: grid; place-items: center; overflow: hidden; }
+#msg[hidden] { display: none; }
+#card { position: relative; z-index: 1; max-width: 86vw; text-align: center; padding: 1.4em 2em; display: grid; justify-items: center; gap: .8em; font-size: 1.3em; animation: rise .3s; }
+#card { background: var(--card, var(--panel)); } /* fondo liso donde el material del mundo no deja leer */
+.t0 { --card: #fff; }
+.t7 { --card: #8a1a22; }
+.t8 { --card: #17171c; }
+#msgText { font-size: 1.1em; line-height: 1.25; }
+#msgIcon { font-size: 2.5em; font-style: normal; }
+#msgNote { font-size: .7em; opacity: .8; }
+#msgNote:empty { display: none; }
+#msgBtn { background: #5aaa5f; color: #fff; padding: .6em 1.6em; box-shadow: 0 5px 0 #3f7a43; }
+#msgBtn:active { box-shadow: 0 2px 0 #3f7a43; }
+.confetti { position: fixed; top: -20px; width: 12px; height: 12px; border-radius: 3px; background: var(--k); box-shadow: 0 3px 0 var(--kd); animation: fall 1.6s ease-in forwards; }
+
+@media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="deco"></div>
+<div id="banner"></div>
+<header><span id="lvl"></span><button id="restart" aria-label="Reiniciar nivel">↻</button></header>
+<div id="queue"></div>
+<div id="dock"></div>
+<div id="stage"><div id="board"></div></div>
+<div id="tip"></div>
+<div id="msg" hidden><div id="card"><span id="msgIcon"></span><span id="msgText"></span><span id="msgNote"></span><button id="msgBtn"></button></div></div>
+
+<script src="logic.js"></script>
+<script>
+const COLORS = ['#e4572e', '#3d8bd9', '#5aaa5f', '#f2b632', '#8f6bc9', '#ea7aa5'];
+const dark = c => '#' + c.slice(1).match(/../g).map(h => (parseInt(h, 16) * .72 | 0).toString(16).padStart(2, '0')).join('');
+const DARK = COLORS.map(dark); // cara frontal de cada bloque
+const DEDICATORIA = ''; // opcional: una línea tuya que aparece al ganar, p. ej. 'Para Ana, con amor'
+
+// Un mundo cada 15 niveles, en ciclo; su aspecto está en body.tN del CSS. Cada uno trae sus símbolos (el color nunca
+// es la única pista; ︎ evita que el teléfono los convierta en emoji), su emblema, sus frases y los emojis del decorado.
+const T = '︎';
+const WORLDS = [
+  { name: 'Nubecitas', sym: ['♥', '★', '☁', '✿', '♪', '●'], icon: '☁️', deco: ['☁️', '🌈', '🎀', '⭐', '🧁'],
+    win: ['¡Paseo entre nubes!', '¡Dulce como canela!', '¡Todos a bordo!'], lose: 'Se nubló la parada' },
+  { name: 'Anochecer', sym: ['☾', '★', '♥', '◆', '✚', '●'], icon: '🌙', deco: ['🌙', '🌲', '🦇', '🍎', '✨'],
+    win: ['¡Antes del amanecer!', '¡Rápidos como la noche!', '¡Por siempre!'], lose: 'Salió el sol antes de tiempo' },
+  { name: 'La arena', sym: ['✦', '♦', '♣', '●', '✚', '♠'], icon: '🏹', deco: ['🔥', '🏹', '🐦', '🌹', '🍞'],
+    win: ['¡La suerte estuvo de tu lado!', '¡Sobreviviste a la arena!', '¡Puntería perfecta!'], lose: 'La arena ganó esta vez' },
+  { name: 'Arrecife', sym: ['≈', '★', '●', '♥', '◆', '✚'], icon: '🦈', deco: ['🦈', '🐚', '🐠', '🌊', '🐙'],
+    win: ['¡Aleta arriba!', '¡Mar despejado!', '¡Nadaron todos!'], lose: 'Hay tráfico en el arrecife' },
+  { name: 'El otro lado', sym: ['◉', '★', '♥', '◆', '✚', '☾'], icon: '🧵', deco: ['🧵', '🗝️', '🐈', '🌙', '✂️'],
+    win: ['¡Encontraste la puerta!', '¡Cosido y cantado!', '¡De vuelta en casa!'], lose: 'La puerta se cerró' },
+  { name: 'Pasarela', sym: ['♥', '★', '✦', '♛', '♪', '✿'], icon: '💋', deco: ['💄', '👠', '💋', '✨', '👜'],
+    win: ['¡Puro estilo!', '¡Glamour total!', '¡A la pasarela!'], lose: 'Embotellamiento en la pasarela' },
+  { name: 'Clase de monstruos', sym: ['♠', '★', '♥', '☾', '✚', '◆'], icon: '🦇', deco: ['🦇', '💀', '🕸️', '🕯️', '🖤'],
+    win: ['¡Monstruosamente bien!', '¡De miedo!', '¡Aprobaste con colmillos!'], lose: 'Sonó la campana' },
+  { name: 'La manada', sym: ['☾', '★', '♥', '◆', '✚', '❄'], icon: '🐺', deco: ['🐺', '🌲', '❄️', '🌕', '🐾'],
+    win: ['¡La manada completa!', '¡Aúllen!', '¡Huellas en la nieve!'], lose: 'La manada se dispersó' },
+  { name: 'Mansión de medianoche', sym: ['♠', '★', '♥', '☾', '✚', '◆'], icon: '🎩', deco: ['💀', '🕷️', '🎩', '🕯️', '🌹'],
+    win: ['¡Elegancia espectral!', '¡Baile de medianoche!', '¡Huesos en orden!'], lose: 'Se apagaron las velas' },
+  { name: 'Dulcería kawaii', sym: ['♥', '★', '✿', '♪', '●', '◆'], icon: '🍭', deco: ['🍭', '🍬', '🍓', '🎀', '🍦'],
+    win: ['¡Qué dulzura!', '¡Empalagosamente bien!', '¡Con moño y todo!'], lose: 'Se derritió el helado' },
+  { name: 'Sirenas', sym: ['♥', '★', '✦', '◆', '≈', '●'], icon: '🐚', deco: ['🐚', '🦪', '💎', '🌊', '⭐'],
+    win: ['¡Perla encontrada!', '¡Contra la corriente!', '¡Brillan bajo el mar!'], lose: 'Se enredaron las algas' },
+  { name: 'El Capitolio', sym: ['♛', '★', '♦', '✦', '♥', '●'], icon: '👑', deco: ['👑', '🌹', '💎', '🎭', '🚄'],
+    win: ['¡Que empiece el espectáculo!', '¡Ovación de pie!', '¡Lujo total!'], lose: 'El público se aburrió' },
+  { name: 'Acuario de medusas', sym: ['●', '★', '♥', '◆', '✚', '≈'], icon: '🐙', deco: ['🐙', '🐠', '💧', '✨', '🐡'],
+    win: ['¡Brillan en lo profundo!', '¡Flotando sin apuro!', '¡Luces encendidas!'], lose: 'Se apagó el acuario' },
+];
+let SYM, W, TI; // símbolos y mundo del nivel actual
+// Dibujos de las piezas, uno por mundo (mismo orden que WORLDS). Cada función recibe el largo en celdas (L) y el ancho
+// del lienzo (W = 100 × L, alto 100) y devuelve SVG acostado, con el frente a la derecha. Clases: ver .art en el CSS.
+const union = f => f("o") + f("f"); // varias formas con un solo contorno: primero todas en oscuro y gruesas, después el relleno
+const each = (L, f) => Array.from({ length: L }, (_, i) => f(50 + 100 * i)).join('');
+const ART = [
+  // rollitos de canela: uno por celda, con su espiral de glaseado
+  L => each(L, x => `<circle class="k" cx="${x}" cy="50" r="45"/><path class="wl" d="M${x} 50a6 6 0 0 1 12 0a12 12 0 0 1-24 0a18 18 0 0 1 36 0a24 24 0 0 1-48 0a30 30 0 0 1 60 0"/>`),
+  // ataúd: hexágono ancho en los hombros, tapa y cruz
+  (L, W) => `<polygon class="k" points="4,32 ${W - 34},6 ${W - 4},30 ${W - 4},70 ${W - 34},94 4,68"/><polygon class="dl" points="16,38 ${W - 36},18 ${W - 14},35 ${W - 14},65 ${W - 36},82 16,62"/><path class="wl" d="M${W - 74} 50h46M${W - 42} 34v32"/>`,
+  // caja de suministros: marco y refuerzo en cruz por celda
+  (L, W) => `<rect class="k" x="4" y="8" width="${W - 8}" height="84" rx="5"/>` + each(L, x => `<rect class="dl" x="${x - 42}" y="14" width="84" height="72"/><path class="dl" d="M${x - 38} 18L${x + 38} 82M${x - 38} 82L${x + 38} 18"/>`),
+  // tabla de surf: punta adelante, raya central y dos franjas
+  (L, W) => `<path class="k" d="M6 50Q8 16 ${W * .5} 12Q${W - 10} 18 ${W - 3} 50Q${W - 10} 82 ${W * .5} 88Q8 84 6 50Z"/><path class="wl" d="M16 50H${W - 12}"/><path class="wl" d="M${W * .45} 17L${W * .38} 83M${W * .6} 16L${W * .53} 84"/>`,
+  // carrete de hilo: el hilo es del color del pasajero, entre dos tapas de madera
+  (L, W) => `<rect class="k" x="16" y="18" width="${W - 32}" height="64" rx="4"/>` + Array.from({ length: Math.floor((W - 54) / 14) + 1 }, (_, i) => `<path class="wl" style="stroke-width:3" d="M${24 + i * 14} 80L${34 + i * 14} 20"/>`).join("") + [4, W - 20].map(x => `<rect x="${x}" y="5" width="16" height="90" rx="5" fill="#e8c79a" stroke="#a9804f" stroke-width="3"/>`).join(""),
+  // labial: base dorada, anillo y barra de color con la punta en bisel
+  (L, W) => `<rect x="4" y="22" width="${W * .3}" height="56" rx="6" fill="#f3c64e" stroke="#a8842a" stroke-width="3"/><rect x="${W * .3 + 4}" y="27" width="${W * .1}" height="46" fill="#fff6d8" stroke="#a8842a" stroke-width="3"/><polygon class="k" points="${W * .4 + 4},30 ${W - 40},30 ${W - 6},64 ${W - 6},70 ${W * .4 + 4},70"/><path class="wl" d="M${W * .4 + 14} 39H${W - 52}"/>`,
+  // lápiz: goma, virola, cuerpo de color y punta de madera con grafito
+  (L, W) => `<rect x="4" y="24" width="22" height="52" rx="8" fill="#ff9ec4" stroke="#c76c86" stroke-width="3"/><rect x="26" y="22" width="14" height="56" fill="#cfd3d8" stroke="#8d9299" stroke-width="3"/><rect class="k" x="40" y="22" width="${W - 86}" height="56"/><path class="dl" d="M40 40.5H${W - 46}M40 59.5H${W - 46}"/><polygon points="${W - 46},22 ${W - 6},50 ${W - 46},78" fill="#f3d3a2" stroke="#b3854d" stroke-width="3" stroke-linejoin="round"/><polygon points="${W - 20},40 ${W - 6},50 ${W - 20},60" fill="#333"/>`,
+  // hueso: barra con dos nudos en cada punta
+  (L, W) => union(c => `<rect class="${c}" x="24" y="33" width="${W - 48}" height="34" rx="6"/>` + [[24, 31], [24, 69], [W - 24, 31], [W - 24, 69]].map(([x, y]) => `<circle class="${c}" cx="${x}" cy="${y}" r="20"/>`).join("")) + `<path class="wl" d="M48 43H${W - 48}"/>`,
+  // llave antigua: anillo atrás, caña y dientes adelante
+  (L, W) => union(c => `<circle class="${c}" cx="34" cy="50" r="30"/><rect class="${c}" x="56" y="38" width="${W - 66}" height="24" rx="5"/><rect class="${c}" x="${W - 46}" y="56" width="14" height="30" rx="3"/><rect class="${c}" x="${W - 24}" y="56" width="14" height="22" rx="3"/><rect class="${c}" x="66" y="30" width="12" height="40" rx="4"/>`) + `<circle class="d" cx="34" cy="50" r="13"/><path class="wl" d="M86 46H${W - 54}"/>`,
+  // caramelo envuelto: cuerpo ovalado, moños del papel en las puntas y rayas
+  (L, W) => `<polygon class="k" points="30,50 3,22 3,78"/><polygon class="k" points="${W - 30},50 ${W - 3},22 ${W - 3},78"/><rect class="k" x="22" y="14" width="${W - 44}" height="72" rx="34"/>` + each(L, x => `<path class="wl" d="M${x - 18} 74L${x - 2} 26M${x + 4} 74L${x + 20} 26"/>`),
+  // conchas: un abanico por celda, con estrías que salen de la bisagra
+  L => each(L, x => `<path class="k" d="M${x - 44} 50L${x - 34} 34Q${x - 8} 2 ${x + 30} 16Q${x + 48} 50 ${x + 30} 84Q${x - 8} 98 ${x - 34} 66Z"/>` + [[30, 22], [39, 36], [42, 50], [39, 64], [30, 78]].map(([dx, y]) => `<path class="wl" style="stroke-width:3.5" d="M${x - 36} 50L${x + dx} ${y}"/>`).join("") + `<circle class="d" cx="${x - 40}" cy="50" r="7"/>`),
+  // ramo de rosas blancas: papel del color del pasajero con moño, hojas y cinco rosas adelante
+  (L, W) => { const rose = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" stroke="#d9a520" stroke-width="2.5"/><path d="M${x} ${y}a${r / 4} ${r / 4} 0 0 1 ${r / 2} 0a${r / 2} ${r / 2} 0 0 1 ${-r} 0" fill="none" stroke="#e58aa6" stroke-width="2.5" stroke-linecap="round"/>`, m = W * .34;
+    return `<ellipse cx="${W - 58}" cy="14" rx="16" ry="8" fill="#4f9a55"/><ellipse cx="${W - 58}" cy="86" rx="16" ry="8" fill="#4f9a55"/><polygon class="k" points="6,44 6,56 ${W - 46},90 ${W - 46},10"/><path class="dl" d="M${m} 36V64"/><polygon class="d" points="${m},50 ${m - 14},30 ${m - 14},44"/><polygon class="d" points="${m},50 ${m - 14},70 ${m - 14},56"/>` + rose(W - 50, 34, 15) + rose(W - 50, 66, 15) + rose(W - 24, 22, 19) + rose(W - 24, 78, 19) + rose(W - 20, 50, 19); },
+  // burbujas: una por celda, translúcidas y con reflejo
+  L => each(L, x => `<circle class="k" cx="${x}" cy="50" r="46" fill-opacity=".8"/><path class="wl" d="M${x - 28} 34Q${x - 20} 18 ${x - 2} 16"/><circle class="w" cx="${x + 22}" cy="68" r="5" opacity=".7"/>`),
+];
+function art(L, color, fit) { // dibujo del objeto del mundo actual, de L celdas de largo; fit: sin deformar (parada)
+  const el = chip('art', color);
+  el.innerHTML = `<svg viewBox="0 0 ${L * 100} 100" preserveAspectRatio="${fit ? 'xMidYMid meet' : 'none'}">${ART[TI](L, L * 100)}</svg>`;
+  return el;
+}
+const ARROW = ['▲', '▶', '▼', '◀'];
+const FLEX = ['column', 'row-reverse', 'column-reverse', 'row']; // la flecha siempre queda del lado del frente
+const $ = id => document.getElementById(id);
+const CALM = matchMedia('(prefers-reduced-motion: reduce)').matches; // sin animaciones si el teléfono lo pide
+const TRAVEL = CALM ? 0 : 750, FLY = CALM ? 0 : 260; // ms: viaje del vehículo a la parada y salto del pasajero
+let bannerFor = 0;
+const TIPS = { // se muestran la primera vez que aparece cada mecánica
+  4: 'Puente levadizo: baja cuando sale una pieza del color de su medallón.',
+  8: 'Bloque con número: se rompe cuando salen esa cantidad de piezas.',
+  12: 'Las piezas grises son sorpresa: muestran su color cuando quedan libres.',
+};
+const nextFrame = fn => requestAnimationFrame(() => requestAnimationFrame(fn));
+
+let level = 1, L, s, over, busy;
+try { level = +localStorage.level || 1; } catch {}
+level = Math.floor(+new URLSearchParams(location.search).get('nivel')) || level; // ?nivel=46 salta a ese nivel
+
+function chip(cls, color, text = '') {
+  const el = document.createElement('div');
+  el.className = cls;
+  el.textContent = text;
+  if (color != null) { el.style.setProperty('--k', COLORS[color]); el.style.setProperty('--kd', DARK[color]); }
+  return el;
+}
+
+function start() {
+  L = makeLevel(level);
+  s = newState(L);
+  over = false;
+  $('msg').hidden = true;
+  document.querySelectorAll('.confetti, .fly, .ghost, .ping, .travel').forEach(el => el.remove());
+  const t = L.world % WORLDS.length, r = rng(level);
+  W = WORLDS[TI = t];
+  SYM = W.sym.map(c => c + T);
+  document.body.className = 't' + t + (L.boss ? ' boss' : '');
+  document.body.style.setProperty('--n', L.n);
+  document.body.style.setProperty('--mark', JSON.stringify(W.icon));
+  $('deco').replaceChildren(...Array.from({ length: 12 }, (_, i) => {
+    const el = chip('', null, W.deco[i % W.deco.length]);
+    el.style.cssText = `left:${r() * 92 | 0}vw;top:${r() * 94 | 0}vh;font-size:${22 + r() * 26 | 0}px;rotate:${(r() * 40 | 0) - 20}deg;animation-delay:${-r() * 5}s`;
+    return el;
+  }));
+  $('dock').style.setProperty('--docks', L.docks);
+  $('lvl').textContent = `${L.boss ? '⭐' : W.icon} Nivel ${level} · ${W.name}`;
+  if ((level - 1) % WORLD_LEN === 0 && bannerFor !== level) { // cartel de bienvenida al entrar a un mundo
+    bannerFor = level;
+    $('banner').textContent = `${W.icon}\nMundo ${L.world + 1}\n${W.name}`;
+    replay($('banner'), 'show');
+  }
+  $('tip').textContent = TIPS[level] || '';
+  $('board').replaceChildren(...s.lot.map((v, i) => {
+    const h = v.dir % 2, el = chip('v'), bus = chip('bus', v.color), roof = chip('roof');
+    el.style.left = `calc(var(--c) * ${v.x})`;
+    el.style.top = `calc(var(--c) * ${v.y})`;
+    el.style.width = `calc(var(--c) * ${h ? v.len : 1})`;
+    el.style.height = `calc(var(--c) * ${h ? 1 : v.len})`;
+    el.style.zIndex = v.y + (h ? 1 : v.len); // los de más abajo tapan a los de arriba
+    el.style.setProperty('--i', i);
+    el.style.setProperty('--dx', DX[v.dir]);
+    el.style.setProperty('--dy', DY[v.dir]);
+    const pic = art(v.len, v.color), tag = chip('tag');
+    // la pieza deja libre --h abajo de su celda para la cara frontal
+    pic.style.setProperty('--len', h ? `calc(var(--c) * ${v.len} - 4px)` : `calc(var(--c) * ${v.len} - var(--h) - 4px)`);
+    pic.style.setProperty('--thick', h ? 'calc(var(--c) - var(--h) - 4px)' : 'calc(var(--c) - 4px)');
+    pic.style.setProperty('--rot', [270, 0, 90, 180][v.dir] + 'deg');
+    tag.style.flexDirection = FLEX[v.dir];
+    v.sym = chip('', null, v.hidden ? '?' : SYM[v.color]);
+    if (v.hidden) el.classList.add('mystery');
+    tag.append(chip('', null, ARROW[v.dir]), v.sym);
+    roof.append(tag);
+    bus.append(pic, roof);
+    el.append(bus);
+    el.onclick = () => tap(v, el);
+    v.el = el;
+    return el;
+  }));
+  tileEls = new Map();
+  drawTiles();
+  render();
+}
+
+// Puente levadizo visto desde arriba, con el paso de izquierda a derecha: foso, dos hojas levantadas (por eso se ven
+// cortas), los estribos de piedra y el medallón donde va el símbolo. Se gira 90° si el camino que corta es vertical.
+const LEAF = 'style="fill:#c49a5c;stroke:#7a5a2e;stroke-width:3;stroke-linejoin:round"', PLANK = 'style="fill:none;stroke:#7a5a2e;stroke-width:2.5"', STONE = 'style="fill:var(--rim);stroke:var(--rim-d);stroke-width:3"';
+const BRIDGE = `<div class="br"><svg viewBox="0 0 100 100">
+  <rect x="10" y="24" width="80" height="52" rx="4" fill="#0008"/>
+  <g class="leaf l"><polygon points="12,26 42,31 42,69 12,74" ${LEAF}/><path d="M22 28V72M32 30V70" ${PLANK}/></g>
+  <g class="leaf r"><polygon points="88,26 58,31 58,69 88,74" ${LEAF}/><path d="M78 28V72M68 30V70" ${PLANK}/></g>
+  <rect x="0" y="16" width="14" height="68" rx="4" ${STONE}/><rect x="86" y="16" width="14" height="68" rx="4" ${STONE}/>
+  <circle class="med" cx="50" cy="50" r="14" style="fill:var(--k);stroke:#fff;stroke-width:3.5"/>
+</svg></div>`;
+let tileEls; // 'x,y' -> elemento del obstáculo
+function drawTiles() { // crea, actualiza o retira puentes y bloques según el estado
+  for (const [k, el] of tileEls) if (!s.tiles.has(k)) { // se abrió
+    tileEls.delete(k);
+    el.classList.add('gone');
+    setTimeout(() => el.remove(), 900);
+  }
+  for (const [k, o] of s.tiles) {
+    let el = tileEls.get(k);
+    if (!el) {
+      const [x, y] = k.split(',');
+      el = chip('tile ' + o.t, o.t === 'gate' ? o.color : null);
+      el.style.left = `calc(var(--c) * ${x})`;
+      el.style.top = `calc(var(--c) * ${y})`;
+      el.style.zIndex = +y + 1;
+      if (o.t === 'gate') { // el puente se alinea con el camino que corta
+        el.innerHTML = BRIDGE;
+        el.style.setProperty('--rot', L.lot.find(v => path(v, s.n).includes(k)).dir % 2 ? '0deg' : '90deg');
+      }
+      el.append(chip('lbl'));
+      $('board').append(el);
+      tileEls.set(k, el);
+    }
+    const lbl = el.lastChild, text = o.t === 'gate' ? SYM[o.color] : String(o.n);
+    if (lbl.textContent !== text) { // el número bajó
+      if (lbl.textContent) replay(el, 'tick');
+      lbl.textContent = text;
+    }
+  }
+}
+
+// boarded: vehículo al que acaba de subir alguien
+function render(boarded) {
+  $('queue').className = boarded ? 'adv' : ''; // la fila da un paso adelante
+  $('queue').replaceChildren(
+    ...s.queue.slice(0, 9).map(c => chip('p', c, SYM[c])),
+    s.queue.length > 9 ? chip('more', null, '+' + (s.queue.length - 9)) : '');
+  $('dock').replaceChildren(...s.dock.map(v => {
+    if (!v) return chip('slot');
+    const wait = (v.arriveAt || 0) - performance.now(); // sigue oculto hasta que llega
+    const el = chip('slot full' + (wait > 0 ? ' arrive' : ''), v.color);
+    if (wait > 0) el.style.setProperty('--wait', wait + 'ms');
+    el.style.setProperty('--cols', v.cap / 2);
+    el.append(art(v.len, v.color, true), ...Array.from({ length: v.cap }, (_, j) =>
+      chip('seat' + (j < v.filled ? ' on' : '') + (v === boarded && j === v.filled - 1 ? ' pop' : ''), null, SYM[v.color])));
+    return el;
+  }));
+}
+
+function replay(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+
+function reveal() { // destapa las piezas sorpresa que quedaron libres
+  for (const v of s.lot) if (v.hidden && canExit(v, s.lot, s.n, s.tiles)) {
+    v.hidden = false;
+    v.sym.textContent = SYM[v.color];
+    v.el.classList.replace('mystery', 'reveal');
+  }
+}
+
+function tap(v, el) {
+  if (over) return;
+  if (!exit(s, v)) {
+    if (canExit(v, s.lot, s.n, s.tiles)) replay($('dock'), 'shake'); // tiene salida pero la parada está llena
+    else replay(el, 'bump');
+    return;
+  }
+  const pic = el.querySelector('.art'), from = el.getBoundingClientRect(), thick = pic.offsetHeight;
+  el.remove();
+  v.arriveAt = performance.now() + TRAVEL; // hasta entonces su lugar en la parada se ve vacío y nadie sube
+  render();
+  drive(pic, from, thick, v);
+  drawTiles();
+  reveal();
+  pump();
+}
+
+// La pieza despega hacia su lado de salida y planea en una sola curva hasta su lugar, girando hasta quedar acostada
+// y achicándose al tamaño exacto con que se dibuja en la parada: al aterrizar no cambia de forma.
+function drive(pic, a, thick, v) {
+  const g = chip('travel', v.color), spin = chip('spin'), board = $('board').getBoundingClientRect();
+  const b = $('dock').children[s.dock.indexOf(v)].getBoundingClientRect();
+  const out = [a.bottom - board.top, board.right - a.left, board.bottom - a.top, a.right - board.left][v.dir] + 30;
+  const cx = DX[v.dir] * out, cy = DY[v.dir] * out;                                   // punto de control: su salida
+  const ex = b.left + b.width / 2 - a.left - a.width / 2, ey = b.top + b.height / 2 - a.top - a.height / 2;
+  const k = Math.min(b.height, b.width / v.len) / thick;                               // grosor en la parada / grosor en el tablero
+  const frames = Array.from({ length: 17 }, (_, i) => {
+    const t = i / 16, u = 1 - t, lift = 1 + .1 * Math.sin(Math.PI * t);
+    return { transform: `translate(${2 * u * t * cx + t * t * ex}px, ${2 * u * t * cy + t * t * ey}px) scale(${(1 + (k - 1) * t) * lift})` };
+  });
+  const timing = { duration: TRAVEL, easing: 'cubic-bezier(.4, 0, .2, 1)', fill: 'forwards' };
+  Object.assign(g.style, { left: a.left + 'px', top: a.top + 'px', width: a.width + 'px', height: a.height + 'px' });
+  spin.append(pic);
+  g.append(spin);
+  document.body.append(g);
+  g.animate(frames, timing);
+  spin.animate([{ transform: 'rotate(0deg)' }, { transform: `rotate(${[90, 0, -90, 180][v.dir]}deg)` }], timing);
+  setTimeout(() => g.remove(), TRAVEL);
+}
+
+function fly(color, a, b) { // pasajero que se desliza de la fila a su asiento
+  const el = chip('p fly', color, SYM[color]), dx = b.left - a.left, dy = b.top - a.top;
+  el.style.left = a.left + 'px';
+  el.style.top = a.top + 'px';
+  document.body.append(el);
+  el.animate([
+    { transform: 'none' },
+    { transform: `translate(${dx / 2}px, ${dy / 2 - 10}px) scale(.85)` },
+    { transform: `translate(${dx}px, ${dy}px) scale(.55)` },
+  ], { duration: FLY, easing: 'cubic-bezier(.4, 0, .2, 1)' });
+  setTimeout(() => el.remove(), FLY);
+}
+
+function depart(slot, color) { // copia del vehículo lleno: destello, y se va por la derecha
+  const r = slot.getBoundingClientRect(), g = slot.cloneNode(true), ping = chip('ping', color);
+  g.className = 'slot full ghost';
+  g.querySelectorAll('.seat').forEach(el => el.className = 'seat on');
+  Object.assign(g.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+  ping.style.left = r.left + r.width / 2 + 'px';
+  ping.style.top = r.top + r.height / 2 + 'px';
+  document.body.append(g, ping);
+  nextFrame(() => g.style.transform = 'translateX(110vw)');
+  setTimeout(() => { g.remove(); ping.remove(); }, 900);
+}
+
+function pump() { // sube pasajeros de a uno
+  if (busy) return;
+  busy = true;
+  (function step() {
+    const next = s.dock.find(v => v && v.color === s.queue[0]);
+    if (next && next.arriveAt > performance.now()) return setTimeout(step, 60); // su vehículo todavía viene en camino
+    const from = $('queue').firstElementChild, color = s.queue[0], b = boardNext(s);
+    if (!b) {
+      busy = false;
+      if (won(s) || lost(s)) {
+        over = true;
+        const cur = s, win = won(s);
+        if (!win) replay($('dock'), 'shake');
+        setTimeout(() => cur === s && end(win), 800);
+      }
+      return;
+    }
+    const slot = $('dock').children[b.slot];
+    fly(color, from.getBoundingClientRect(), slot.querySelectorAll('.seat')[b.v.filled - 1].getBoundingClientRect());
+    if (b.v.filled === b.v.cap) depart(slot, b.v.color);
+    render(b.v);
+    setTimeout(step, 230);
+  })();
+}
+
+function end(win) {
+  if (win) {
+    level++;
+    try { localStorage.level = level; } catch {}
+    for (let i = 0; i < 24; i++) {
+      const c = chip('confetti', i % COLORS.length);
+      c.style.left = Math.random() * 100 + 'vw';
+      c.style.animationDelay = Math.random() * .4 + 's';
+      $('msg').append(c);
+    }
+  }
+  // W sigue siendo el mundo del nivel recién jugado: start() lo cambia recién al tocar el botón
+  $('msgIcon').textContent = win ? W.icon : '🚧';
+  $('msgText').textContent = win ? W.win[level % W.win.length] : W.lose;
+  $('msgNote').textContent = win ? DEDICATORIA : '';
+  $('msgBtn').textContent = win ? 'Siguiente' : 'Reintentar';
+  $('msg').hidden = false;
+}
+
+$('msgBtn').onclick = $('restart').onclick = start;
+start();
+// Solo para revisar: ?auto=3 juega solo los primeros 3 movimientos de la solución
+for (let i = 0, n = +new URLSearchParams(location.search).get("auto"); i < n && i < L.solution.length; i++)
+  setTimeout(() => tap(L.solution[i], L.solution[i].el), 800 + i * 1500);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>

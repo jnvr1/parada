@@ -324,7 +324,7 @@ button:active { translate: 0 3px; box-shadow: 0 2px 0 var(--panel-d), inset 0 2p
 const COLORS = ['#e4572e', '#3d8bd9', '#5aaa5f', '#f2b632', '#8f6bc9', '#ea7aa5'];
 const dark = c => '#' + c.slice(1).match(/../g).map(h => (parseInt(h, 16) * .72 | 0).toString(16).padStart(2, '0')).join('');
 const DARK = COLORS.map(dark); // cara frontal de cada bloque
-const DEDICATORIA = ''; // opcional: una línea tuya que aparece al ganar, p. ej. 'Para Ana, con amor'
+const DEDICATORIA = 'Para la pioja'; // opcional: una línea tuya que aparece al ganar, p. ej. 'Para Ana, con amor'
 
 // Un mundo cada 15 niveles, en ciclo; su aspecto está en body.tN del CSS. Cada uno trae sus símbolos (el color nunca
 // es la única pista; ︎ evita que el teléfono los convierta en emoji), su emblema, sus frases y los emojis del decorado.

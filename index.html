@@ -421,9 +421,33 @@ function chip(cls, color, text = '') {
   return el;
 }
 
-function start() {
+// La jugada en curso se guarda en el teléfono después de cada movimiento, para retomarla al volver a abrir el juego.
+// sig evita restaurar una jugada sobre un tablero distinto (otro nivel, o el mismo número tras una actualización).
+const sig = () => L.lot.map(v => '' + v.x + v.y + v.dir + v.len + v.color).join('') + L.queue.join('');
+function save() {
+  try {
+    localStorage.game = JSON.stringify({
+      sig: sig(), queue: s.queue, tiles: [...s.tiles],
+      lot: s.lot.map(v => L.lot.indexOf(v)), dock: s.dock.map(v => v && [L.lot.indexOf(v), v.filled]),
+    });
+  } catch {}
+}
+function forget() { try { localStorage.removeItem('game'); } catch {} }
+function restore() {
+  try {
+    const g = JSON.parse(localStorage.game);
+    if (g.sig !== sig() || g.dock.length !== L.docks) return;
+    s.lot = g.lot.map(i => L.lot[i]);
+    s.dock = g.dock.map(d => d && Object.assign(L.lot[d[0]], { filled: d[1] }));
+    s.queue = g.queue;
+    s.tiles = new Map(g.tiles);
+  } catch {} // sin jugada guardada, o ilegible: se empieza el nivel de cero
+}
+
+function start(resume) { // resume: retomar la jugada guardada (solo al abrir el juego)
   L = makeLevel(level);
   s = newState(L);
+  if (resume === true) restore(); else forget();
   over = false;
   $('msg').hidden = true;
   document.querySelectorAll('.confetti, .fly, .ghost, .ping, .travel').forEach(el => el.remove());
@@ -557,6 +581,7 @@ function tap(v, el) {
   el.remove();
   v.arriveAt = performance.now() + TRAVEL; // hasta entonces su lugar en la parada se ve vacío y nadie sube
   render();
+  save();
   drive(pic, from, thick, v);
   drawTiles();
   reveal();
@@ -623,7 +648,9 @@ function pump() { // sube pasajeros de a uno
       if (won(s) || lost(s)) {
         over = true;
         const cur = s, win = won(s);
-        if (!win) replay($('dock'), 'shake');
+        forget();
+        if (win) try { localStorage.level = level + 1; } catch {} // ya cuenta como ganado aunque cierren antes del cartel
+        else replay($('dock'), 'shake');
         setTimeout(() => cur === s && end(win), 800);
       }
       return;
@@ -632,6 +659,7 @@ function pump() { // sube pasajeros de a uno
     fly(color, from.getBoundingClientRect(), slot.querySelectorAll('.seat')[b.v.filled - 1].getBoundingClientRect());
     if (b.v.filled === b.v.cap) depart(slot, b.v.color);
     render(b.v);
+    save();
     setTimeout(step, 230);
   })();
 }
@@ -655,8 +683,9 @@ function end(win) {
   $('msg').hidden = false;
 }
 
-$('msgBtn').onclick = $('restart').onclick = start;
-start();
+$('msgBtn').onclick = $('restart').onclick = () => start();
+start(true);
+pump(); // si la jugada retomada quedó con pasajeros a medio subir, siguen subiendo
 // Solo para revisar: ?auto=3 juega solo los primeros 3 movimientos de la solución
 for (let i = 0, n = +new URLSearchParams(location.search).get("auto"); i < n && i < L.solution.length; i++)
   setTimeout(() => tap(L.solution[i], L.solution[i].el), 800 + i * 1500);

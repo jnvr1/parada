@@ -686,9 +686,6 @@ function end(win) {
 $('msgBtn').onclick = $('restart').onclick = () => start();
 start(true);
 pump(); // si la jugada retomada quedó con pasajeros a medio subir, siguen subiendo
-// Solo para revisar: ?auto=3 juega solo los primeros 3 movimientos de la solución
-for (let i = 0, n = +new URLSearchParams(location.search).get("auto"); i < n && i < L.solution.length; i++)
-  setTimeout(() => tap(L.solution[i], L.solution[i].el), 800 + i * 1500);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
 </body>

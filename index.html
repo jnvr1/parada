@@ -290,7 +290,13 @@ button:active { translate: 0 3px; box-shadow: 0 2px 0 var(--panel-d), inset 0 2p
 @keyframes fall { to { translate: 0 110vh; rotate: 540deg } }
 
 #banner { position: fixed; inset: 0; z-index: 90; display: grid; place-content: center; text-align: center; white-space: pre-line; font-size: 2em; line-height: 1.4; color: #fff; text-shadow: 0 3px 0 #0008; background: #000a; opacity: 0; pointer-events: none; }
-#banner.show { animation: banner 1.8s ease-in-out; }
+#banner.show { animation: banner 3s ease-in-out; }
+.ded { margin-top: .7em; font-size: .55em; font-style: normal; animation: beat .6s ease-in-out infinite alternate; } /* la dedicatoria late */
+.ded::before, .ded::after { content: ' 💛 '; }
+.ded:empty { display: none; }
+.gesto { position: absolute; bottom: -8%; font-style: normal; text-shadow: none; opacity: 0; animation: floatup 2.4s ease-out forwards; }
+@keyframes beat { to { scale: 1.08 } }
+@keyframes floatup { 12% { opacity: 1 } to { translate: 0 -75vh; rotate: 20deg; opacity: 0 } }
 #msg { position: fixed; inset: 0; z-index: 99; background: #1a122699; display: grid; place-items: center; overflow: hidden; }
 #msg[hidden] { display: none; }
 #card { position: relative; z-index: 1; max-width: 86vw; text-align: center; padding: 1.4em 2em; display: grid; justify-items: center; gap: .8em; font-size: 1.3em; animation: rise .3s; }
@@ -300,8 +306,6 @@ button:active { translate: 0 3px; box-shadow: 0 2px 0 var(--panel-d), inset 0 2p
 .t8 { --card: #17171c; }
 #msgText { font-size: 1.1em; line-height: 1.25; }
 #msgIcon { font-size: 2.5em; font-style: normal; }
-#msgNote { font-size: .7em; opacity: .8; }
-#msgNote:empty { display: none; }
 #msgBtn { background: #5aaa5f; color: #fff; padding: .6em 1.6em; box-shadow: 0 5px 0 #3f7a43; }
 #msgBtn:active { box-shadow: 0 2px 0 #3f7a43; }
 .confetti { position: fixed; top: -20px; width: 12px; height: 12px; border-radius: 3px; background: var(--k); box-shadow: 0 3px 0 var(--kd); animation: fall 1.6s ease-in forwards; }
@@ -317,14 +321,14 @@ button:active { translate: 0 3px; box-shadow: 0 2px 0 var(--panel-d), inset 0 2p
 <div id="dock"></div>
 <div id="stage"><div id="board"></div></div>
 <div id="tip"></div>
-<div id="msg" hidden><div id="card"><span id="msgIcon"></span><span id="msgText"></span><span id="msgNote"></span><button id="msgBtn"></button></div></div>
+<div id="msg" hidden><div id="card"><span id="msgIcon"></span><span id="msgText"></span><button id="msgBtn"></button></div></div>
 
 <script src="logic.js"></script>
 <script>
 const COLORS = ['#e4572e', '#3d8bd9', '#5aaa5f', '#f2b632', '#8f6bc9', '#ea7aa5'];
 const dark = c => '#' + c.slice(1).match(/../g).map(h => (parseInt(h, 16) * .72 | 0).toString(16).padStart(2, '0')).join('');
 const DARK = COLORS.map(dark); // cara frontal de cada bloque
-const DEDICATORIA = 'Para la pioja'; // opcional: una línea tuya que aparece al ganar, p. ej. 'Para Ana, con amor'
+const DEDICATORIA = 'Para la pioja'; // aparece en el cartel de cada mundo nuevo; vacía = sin dedicatoria ni gestos
 
 // Un mundo cada 15 niveles, en ciclo; su aspecto está en body.tN del CSS. Cada uno trae sus símbolos (el color nunca
 // es la única pista; ︎ evita que el teléfono los convierta en emoji), su emblema, sus frases y los emojis del decorado.
@@ -466,7 +470,14 @@ function start(resume) { // resume: retomar la jugada guardada (solo al abrir el
   $('lvl').textContent = `${L.boss ? '⭐' : W.icon} Nivel ${level} · ${W.name}`;
   if ((level - 1) % WORLD_LEN === 0 && bannerFor !== level) { // cartel de bienvenida al entrar a un mundo
     bannerFor = level;
-    $('banner').textContent = `${W.icon}\nMundo ${L.world + 1}\n${W.name}`;
+    // Cartel del mundo con la dedicatoria y sus gestos: corazones y cositas del mundo que suben flotando
+    $('banner').replaceChildren(
+      chip('', null, `${W.icon}\nMundo ${L.world + 1}\n${W.name}`), chip('ded', null, DEDICATORIA),
+      ...Array.from({ length: DEDICATORIA ? 12 : 0 }, (_, i) => {
+        const el = chip('gesto', null, i % 2 ? '💛' : W.deco[(i >> 1) % W.deco.length]);
+        el.style.cssText = `left:${6 + r() * 84 | 0}vw;font-size:${18 + r() * 18 | 0}px;animation-delay:${(r() * .9).toFixed(2)}s`;
+        return el;
+      }));
     replay($('banner'), 'show');
   }
   $('tip').textContent = TIPS[level] || '';
@@ -678,7 +689,6 @@ function end(win) {
   // W sigue siendo el mundo del nivel recién jugado: start() lo cambia recién al tocar el botón
   $('msgIcon').textContent = win ? W.icon : '🚧';
   $('msgText').textContent = win ? W.win[level % W.win.length] : W.lose;
-  $('msgNote').textContent = win ? DEDICATORIA : '';
   $('msgBtn').textContent = win ? 'Siguiente' : 'Reintentar';
   $('msg').hidden = false;
 }

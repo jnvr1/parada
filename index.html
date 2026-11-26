@@ -292,7 +292,7 @@ button:active { translate: 0 3px; box-shadow: 0 2px 0 var(--panel-d), inset 0 2p
 #banner { position: fixed; inset: 0; z-index: 90; display: grid; place-content: center; text-align: center; white-space: pre-line; font-size: 2em; line-height: 1.4; color: #fff; text-shadow: 0 3px 0 #0008; background: #000a; opacity: 0; pointer-events: none; }
 #banner.show { animation: banner 3s ease-in-out; }
 .ded { margin-top: .7em; font-size: .55em; font-style: normal; animation: beat .6s ease-in-out infinite alternate; } /* la dedicatoria late */
-.ded::before, .ded::after { content: ' 💛 '; }
+.ded::before, .ded::after { content: ' 💙 '; }
 .ded:empty { display: none; }
 .gesto { position: absolute; bottom: -8%; font-style: normal; text-shadow: none; opacity: 0; animation: floatup 2.4s ease-out forwards; }
 @keyframes beat { to { scale: 1.08 } }
@@ -474,7 +474,7 @@ function start(resume) { // resume: retomar la jugada guardada (solo al abrir el
     $('banner').replaceChildren(
       chip('', null, `${W.icon}\nMundo ${L.world + 1}\n${W.name}`), chip('ded', null, DEDICATORIA),
       ...Array.from({ length: DEDICATORIA ? 12 : 0 }, (_, i) => {
-        const el = chip('gesto', null, i % 2 ? '💛' : W.deco[(i >> 1) % W.deco.length]);
+        const el = chip('gesto', null, i % 2 ? '💙' : W.deco[(i >> 1) % W.deco.length]);
         el.style.cssText = `left:${6 + r() * 84 | 0}vw;font-size:${18 + r() * 18 | 0}px;animation-delay:${(r() * .9).toFixed(2)}s`;
         return el;
       }));
